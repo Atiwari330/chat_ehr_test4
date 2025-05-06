@@ -3,7 +3,7 @@ import {
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from 'ai';
-import { xai } from '@ai-sdk/xai';
+import { openai } from '@ai-sdk/openai';
 import { isTestEnvironment } from '../constants';
 import {
   artifactModel,
@@ -12,6 +12,16 @@ import {
   titleModel,
 } from './models.test';
 
+// Configure OpenAI with environment variables
+// Log API key details for debugging
+console.log('OpenAI API Key Debug:', {
+  keyExists: !!process.env.OPENAI_API_KEY,
+  keyLength: process.env.OPENAI_API_KEY?.length,
+  keyStart: process.env.OPENAI_API_KEY?.substring(0, 10) + '...',
+});
+
+// The API SDK should automatically use OPENAI_API_KEY from environment
+// Let's use different model versions that are definitely available
 export const myProvider = isTestEnvironment
   ? customProvider({
       languageModels: {
@@ -23,15 +33,18 @@ export const myProvider = isTestEnvironment
     })
   : customProvider({
       languageModels: {
-        'chat-model': xai('grok-2-vision-1212'),
+        // Using standard GPT models instead of vision/preview models
+        'chat-model': openai('gpt-4'),
         'chat-model-reasoning': wrapLanguageModel({
-          model: xai('grok-3-mini-beta'),
+          model: openai('gpt-4'),
           middleware: extractReasoningMiddleware({ tagName: 'think' }),
         }),
-        'title-model': xai('grok-2-1212'),
-        'artifact-model': xai('grok-2-1212'),
+        'title-model': openai('gpt-3.5-turbo'),
+        'artifact-model': openai('gpt-3.5-turbo'),
       },
       imageModels: {
-        'small-model': xai.image('grok-2-image'),
+        'small-model': openai.image('dall-e-3'),
       },
     });
+    
+console.log('AI provider configured successfully');

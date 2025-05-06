@@ -1,0 +1,5 @@
+# This is the corrected Postgres URL format for your .env.local file:
+
+POSTGRES_URL=postgresql://postgres.rbyhpxjhlvekkmfxsahl:iamaKing6699@aws-0-us-east-2.pooler.supabase.com:5432/postgres
+
+# Notice that 'postgres****' was changed to just 'postgres', which is the default database name for Supabase.
