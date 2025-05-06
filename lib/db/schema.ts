@@ -19,6 +19,19 @@ export const user = pgTable('User', {
 
 export type User = InferSelectModel<typeof user>;
 
+export const client = pgTable('Client', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  firstName: text('firstName').notNull(),
+  lastName: text('lastName').notNull(),
+  dateOfBirth: timestamp('dateOfBirth'), // Using timestamp for simplicity, could be date type
+  medicalRecordNumber: varchar('medicalRecordNumber', { length: 32 }).unique(), // Example length, assuming it's unique
+  profileNotes: text('profileNotes'), // General notes about the client
+});
+
+export type Client = InferSelectModel<typeof client>;
+
 export const chat = pgTable('Chat', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   createdAt: timestamp('createdAt').notNull(),
@@ -26,6 +39,7 @@ export const chat = pgTable('Chat', {
   userId: uuid('userId')
     .notNull()
     .references(() => user.id),
+  clientId: uuid('clientId').references(() => client.id),
   visibility: varchar('visibility', { enum: ['public', 'private'] })
     .notNull()
     .default('private'),

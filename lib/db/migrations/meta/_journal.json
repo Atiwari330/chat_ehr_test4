@@ -50,6 +50,20 @@
       "when": 1746118166211,
       "tag": "0006_marvelous_frog_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1746503629801,
+      "tag": "0007_vengeful_purifiers",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1746503667272,
+      "tag": "0008_thankful_midnight",
+      "breakpoints": true
     }
   ]
 }

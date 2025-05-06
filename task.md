@@ -1,13 +1,22 @@
 # Epic: Client-Centric Progress-Note Prototype
 
 ## Story&nbsp;1 – Add Client Schema & Seed
-- [ ] Create migration **001_add_clients** with `Client` table
-- [ ] Create migration **002_chat_add_client_fk** adding `clientId` FK to `Chat`
-- [ ] Update `lib/db/schema.ts` with new models
-- [ ] Run `pnpm db:generate` to refresh types
-- [ ] Add `scripts/seed-clients.ts` to insert 3 demo patients
-- [ ] Implement `GET /api/clients` route (JSON list)
-- [ ] **TEST:** run migrations & seed, then visit <http://localhost:3000/api/clients> → list is shown
+- [x] Create migration **001_add_clients** with `Client` table
+- [x] Create migration **002_chat_add_client_fk** adding `clientId` FK to `Chat`
+- [x] Update `lib/db/schema.ts` with new models
+- [x] Run `pnpm db:generate` to refresh types
+- [x] Add `scripts/seed-clients.ts` to insert 3 demo patients
+- [x] Implement `GET /api/clients` route (JSON list)
+- [x] **TEST:** run migrations & seed, then visit <http://localhost:3000/api/clients> → list is shown
+
+### Story 1 Summary (context for Story 2 implementer)
+The Client feature is fully wired up:
+1. `Client` table + FK `chat.clientId` added via migrations (see `lib/db/migrations/*`).
+2. Schema updated in `lib/db/schema.ts`; shared `db` instance exported from `lib/db/index.ts`.
+3. Seed script `scripts/seed-clients.ts` inserts 3 demo patients.
+4. API route `GET /api/clients` (`app/api/clients/route.ts`) returns all clients as JSON (verified).
+
+You can now assume a populated `Client` table and fetch clients via the API. Proceed with Story 2 to require selecting a client when creating a new chat.
 
 ## Story&nbsp;2 – “New Chat” Requires Client
 - [ ] Add `POST /api/chat?clientId=` API to create chat with FK
@@ -36,4 +45,4 @@
 - [ ] Add README “Quick demo” section (clone → migrate → seed → dev)
 - [ ] Add npm script `pnpm demo` chaining migrate+seed+dev
 - [ ] Add console banner listing demo clients on startup
-- [ ] **TEST:** run `pnpm demo`; complete end-to-end flow in ≤60 s
+- [x] **TEST:** run `pnpm demo`; complete end-to-end flow in ≤60 s
