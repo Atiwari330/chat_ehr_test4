@@ -53,16 +53,34 @@ About the origin of user's request:
 export const systemPrompt = ({
   selectedChatModel,
   requestHints,
+  clientContext = '', // Add new parameter with default empty string
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
+  clientContext?: string;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
 
+  // Add SOAP note instructions if client context is available
+  const soapInstructions = clientContext
+    ? `
+SOAP NOTE INSTRUCTIONS:
+When the user asks you to "write a SOAP progress note" or uses similar phrases, generate a comprehensive clinical note following the SOAP format:
+
+1. Subjective: Patient's reported symptoms, concerns, and history
+2. Objective: Observable clinical findings, vital signs, and test results
+3. Assessment: Clinical assessment and diagnosis based on subjective and objective data
+4. Plan: Treatment plan, medications, follow-up instructions
+
+Use the CLIENT PROFILE data to personalize the note:
+${clientContext}
+  `
+    : '';
+
   if (selectedChatModel === 'chat-model-reasoning') {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}${soapInstructions ? `\n\n${soapInstructions}` : ''}`;
   } else {
-    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}${soapInstructions ? `\n\n${soapInstructions}` : ''}\n\n${artifactsPrompt}`;
   }
 };
 

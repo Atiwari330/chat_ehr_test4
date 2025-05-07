@@ -26,10 +26,10 @@ You can now assume a populated `Client` table and fetch clients via the API. Pro
 - [x] **TEST:** click "New Chat" → pick client → chat opens, input enabled
 
 ## Story&nbsp;3 – Inject Client Context & Generate SOAP Note
-- [ ] Add `lib/utils/build-client-context.ts` (row → string)
-- [ ] Patch chat completion handler to prepend client profile
-- [ ] Add keyword trigger for SOAP progress-note template
-- [ ] **TEST:** ask "Write a SOAP progress note" → response follows S/O/A/P and includes client facts; verify server logs
+- [x] Add `lib/utils/build-client-context.ts` (row → string)
+- [x] Patch chat completion handler to prepend client profile
+- [x] Add keyword trigger for SOAP progress-note template
+- [x] **TEST:** ask "Write a SOAP progress note" → response follows S/O/A/P and includes client facts; verify server logs
 
 ## Story&nbsp;4 – Persist & Display Progress-Note Artifact
 - [ ] Ensure LLM invokes `createDocument` tool (`kind: "text"`)

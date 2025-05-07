@@ -7,6 +7,9 @@ import {
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
+import { buildClientContext } from '@/lib/utils/build-client-context';
+import { db, client as clientSchema } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 import {
   createStreamId,
   deleteChatById,
@@ -77,7 +80,7 @@ export async function POST(request: Request) {
     console.log('API Key Debug:', {
       apiKeyExists: !!process.env.OPENAI_API_KEY,
       apiKeyLength: process.env.OPENAI_API_KEY?.length,
-      chatModel: selectedChatModel
+      chatModel: selectedChatModel,
     });
 
     const session = await auth();
@@ -154,14 +157,40 @@ export async function POST(request: Request) {
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
 
+    // Fetch client data if available
+    let clientContext = '';
+    if (chat?.clientId) {
+      try {
+        const clientData = await db
+          .select()
+          .from(clientSchema)
+          .where(eq(clientSchema.id, chat.clientId))
+          .limit(1);
+        if (clientData.length > 0) {
+          clientContext = buildClientContext(clientData[0]);
+          console.log('Added client context for chat:', id);
+        }
+      } catch (error) {
+        console.error('Error fetching client data:', error);
+        // Continue without client context if there's an error
+      }
+    }
+
     const stream = createDataStream({
       execute: (dataStream) => {
         try {
-          console.log('Attempting to create AI stream with model:', selectedChatModel);
-          
+          console.log(
+            'Attempting to create AI stream with model:',
+            selectedChatModel,
+          );
+
           const result = streamText({
             model: myProvider.languageModel(selectedChatModel),
-            system: systemPrompt({ selectedChatModel, requestHints }),
+            system: systemPrompt({
+              selectedChatModel,
+              requestHints,
+              clientContext,
+            }),
             messages,
             maxSteps: 5,
             experimental_activeTools:
@@ -240,7 +269,7 @@ export async function POST(request: Request) {
       },
       onError: (error) => {
         console.error('AI stream error:', error);
-        return 'Oops, an error occurred: ' + (error instanceof Error ? error.message : String(error));
+        return `Oops, an error occurred: ${error instanceof Error ? error.message : String(error)}`;
       },
     });
 
@@ -255,9 +284,12 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error('Fatal error in chat API route:', error);
-    return new Response('An error occurred while processing your request: ' + (error instanceof Error ? error.message : String(error)), {
-      status: 500,
-    });
+    return new Response(
+      `An error occurred while processing your request: ${error instanceof Error ? error.message : String(error)}`,
+      {
+        status: 500,
+      },
+    );
   }
 }
 
