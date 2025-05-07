@@ -15,6 +15,7 @@ import {
 import {
   user,
   chat,
+  client,
   type User,
   document,
   type Suggestion,
@@ -126,10 +127,21 @@ export async function getChatsByUserId({
   try {
     const extendedLimit = limit + 1;
 
+    // Create a query function that includes client information via left join
     const query = (whereCondition?: SQL<any>) =>
       db
-        .select()
+        .select({
+          id: chat.id,
+          createdAt: chat.createdAt,
+          title: chat.title,
+          userId: chat.userId,
+          clientId: chat.clientId,
+          visibility: chat.visibility,
+          clientFirstName: client.firstName,
+          clientLastName: client.lastName,
+        })
         .from(chat)
+        .leftJoin(client, eq(chat.clientId, client.id))
         .where(
           whereCondition
             ? and(whereCondition, eq(chat.userId, id))
@@ -138,7 +150,7 @@ export async function getChatsByUserId({
         .orderBy(desc(chat.createdAt))
         .limit(extendedLimit);
 
-    let filteredChats: Array<Chat> = [];
+    let filteredChats = [];
 
     if (startingAfter) {
       const [selectedChat] = await db
@@ -168,10 +180,20 @@ export async function getChatsByUserId({
       filteredChats = await query();
     }
 
-    const hasMore = filteredChats.length > limit;
+    // Add a clientName property to each chat
+    const processedChats = filteredChats.map((chat) => {
+      // Create a new object with clientName property
+      const chatObj: any = { ...chat };
+      if (chatObj.clientFirstName && chatObj.clientLastName) {
+        chatObj.clientName = `${chatObj.clientFirstName} ${chatObj.clientLastName}`;
+      }
+      return chatObj;
+    });
+
+    const hasMore = processedChats.length > limit;
 
     return {
-      chats: hasMore ? filteredChats.slice(0, limit) : filteredChats,
+      chats: hasMore ? processedChats.slice(0, limit) : processedChats,
       hasMore,
     };
   } catch (error) {

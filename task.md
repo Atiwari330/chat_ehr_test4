@@ -32,14 +32,14 @@ You can now assume a populated `Client` table and fetch clients via the API. Pro
 - [x] **TEST:** ask "Write a SOAP progress note" → response follows S/O/A/P and includes client facts; verify server logs
 
 ## Story&nbsp;4 – Persist & Display Progress-Note Artifact
-- [ ] Ensure LLM invokes `createDocument` tool (`kind: "text"`)
-- [ ] Verify artifact renders after generation
-- [ ] **TEST:** generate note, open fullscreen, confirm content stored
+- [x] Ensure LLM invokes `createDocument` tool (`kind: "text"`)
+- [x] Verify artifact renders after generation
+- [x] **TEST:** generate note, open fullscreen, confirm content stored
 
 ## Story&nbsp;5 – Sidebar Label Includes Client Name
-- [ ] Set chat `title` (e.g., "Progress note") on first message if keywords detected
-- [ ] Update sidebar query to show "{Client} – {Chat.title}"
-- [ ] **TEST:** create new chat → sidebar shows "John Smith – Progress note"
+- [x] Set chat `title` (e.g., "Progress note") on first message if keywords detected
+- [x] Update sidebar query to show "{Client} – {Chat.title}"
+- [x] **TEST:** create new chat → sidebar shows "John Smith – Progress note"
 
 ## Story&nbsp;6 – Polishing & Demo Script
 - [ ] Add README "Quick demo" section (clone → migrate → seed → dev)
