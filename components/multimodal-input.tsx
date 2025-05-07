@@ -42,6 +42,7 @@ function PureMultimodalInput({
   handleSubmit,
   className,
   selectedVisibilityType,
+  disabled,
 }: {
   chatId: string;
   input: UseChatHelpers['input'];
@@ -56,6 +57,7 @@ function PureMultimodalInput({
   handleSubmit: UseChatHelpers['handleSubmit'];
   className?: string;
   selectedVisibilityType: VisibilityType;
+  disabled?: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -274,6 +276,7 @@ function PureMultimodalInput({
         )}
         rows={2}
         autoFocus
+        disabled={disabled}
         onKeyDown={(event) => {
           if (
             event.key === 'Enter' &&
@@ -292,7 +295,7 @@ function PureMultimodalInput({
       />
 
       <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
-        <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+        <AttachmentsButton fileInputRef={fileInputRef} status={status} disabled={disabled} />
       </div>
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
@@ -303,6 +306,7 @@ function PureMultimodalInput({
             input={input}
             submitForm={submitForm}
             uploadQueue={uploadQueue}
+            disabled={disabled}
           />
         )}
       </div>
@@ -318,6 +322,7 @@ export const MultimodalInput = memo(
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
       return false;
+    if (prevProps.disabled !== nextProps.disabled) return false;
 
     return true;
   },
@@ -326,9 +331,11 @@ export const MultimodalInput = memo(
 function PureAttachmentsButton({
   fileInputRef,
   status,
+  disabled,
 }: {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   status: UseChatHelpers['status'];
+  disabled?: boolean;
 }) {
   return (
     <Button
@@ -338,7 +345,7 @@ function PureAttachmentsButton({
         event.preventDefault();
         fileInputRef.current?.click();
       }}
-      disabled={status !== 'ready'}
+      disabled={status !== 'ready' || disabled}
       variant="ghost"
     >
       <PaperclipIcon size={14} />
@@ -376,10 +383,12 @@ function PureSendButton({
   submitForm,
   input,
   uploadQueue,
+  disabled,
 }: {
   submitForm: () => void;
   input: string;
   uploadQueue: Array<string>;
+  disabled?: boolean;
 }) {
   return (
     <Button
@@ -389,7 +398,7 @@ function PureSendButton({
         event.preventDefault();
         submitForm();
       }}
-      disabled={input.length === 0 || uploadQueue.length > 0}
+      disabled={disabled || input.length === 0 || uploadQueue.length > 0}
     >
       <ArrowUpIcon size={14} />
     </Button>
@@ -400,5 +409,6 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   if (prevProps.uploadQueue.length !== nextProps.uploadQueue.length)
     return false;
   if (prevProps.input !== nextProps.input) return false;
+  if (prevProps.disabled !== nextProps.disabled) return false;
   return true;
 });

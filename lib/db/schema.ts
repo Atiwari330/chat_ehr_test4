@@ -9,15 +9,64 @@ import {
   primaryKey,
   foreignKey,
   boolean,
+  integer,
 } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('User', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
-  email: varchar('email', { length: 64 }).notNull(),
-  password: varchar('password', { length: 64 }),
+  name: text('name'),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  emailVerified: timestamp('emailVerified', { mode: 'date' }),
+  image: text('image'),
 });
 
 export type User = InferSelectModel<typeof user>;
+
+export const accounts = pgTable(
+  'Account',
+  {
+    userId: uuid('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    type: text('type').$type<ProviderType>().notNull(),
+    provider: text('provider').notNull(),
+    providerAccountId: text('providerAccountId').notNull(),
+    refresh_token: text('refresh_token'),
+    access_token: text('access_token'),
+    expires_at: integer('expires_at'),
+    token_type: text('token_type'),
+    scope: text('scope'),
+    id_token: text('id_token'),
+    session_state: text('session_state'),
+  },
+  (account) => ({
+    compoundKey: primaryKey({
+      columns: [account.provider, account.providerAccountId],
+    }),
+  })
+);
+
+type ProviderType = 'oauth' | 'email' | 'credentials';
+
+export const sessions = pgTable('Session', {
+  sessionToken: text('sessionToken').primaryKey(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  expires: timestamp('expires', { mode: 'date' }).notNull(),
+});
+
+export const verificationTokens = pgTable(
+  'VerificationToken',
+  {
+    identifier: text('identifier').notNull(),
+    token: text('token').notNull(),
+    expires: timestamp('expires', { mode: 'date' }).notNull(),
+  },
+  (vt) => ({
+    compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
+  })
+);
 
 export const client = pgTable('Client', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
@@ -25,9 +74,9 @@ export const client = pgTable('Client', {
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
   firstName: text('firstName').notNull(),
   lastName: text('lastName').notNull(),
-  dateOfBirth: timestamp('dateOfBirth'), // Using timestamp for simplicity, could be date type
-  medicalRecordNumber: varchar('medicalRecordNumber', { length: 32 }).unique(), // Example length, assuming it's unique
-  profileNotes: text('profileNotes'), // General notes about the client
+  dateOfBirth: timestamp('dateOfBirth'),
+  medicalRecordNumber: varchar('medicalRecordNumber', { length: 32 }).unique(),
+  profileNotes: text('profileNotes'),
 });
 
 export type Client = InferSelectModel<typeof client>;
@@ -38,8 +87,8 @@ export const chat = pgTable('Chat', {
   title: text('title').notNull(),
   userId: uuid('userId')
     .notNull()
-    .references(() => user.id),
-  clientId: uuid('clientId').references(() => client.id),
+    .references(() => user.id, { onDelete: 'cascade' }),
+  clientId: uuid('clientId').references(() => client.id, { onDelete: 'set null' }),
   visibility: varchar('visibility', { enum: ['public', 'private'] })
     .notNull()
     .default('private'),
@@ -47,13 +96,11 @@ export const chat = pgTable('Chat', {
 
 export type Chat = InferSelectModel<typeof chat>;
 
-// DEPRECATED: The following schema is deprecated and will be removed in the future.
-// Read the migration guide at https://github.com/vercel/ai-chatbot/blob/main/docs/04-migrate-to-parts.md
 export const messageDeprecated = pgTable('Message', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   chatId: uuid('chatId')
     .notNull()
-    .references(() => chat.id),
+    .references(() => chat.id, { onDelete: 'cascade' }),
   role: varchar('role').notNull(),
   content: json('content').notNull(),
   createdAt: timestamp('createdAt').notNull(),
@@ -65,7 +112,7 @@ export const message = pgTable('Message_v2', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   chatId: uuid('chatId')
     .notNull()
-    .references(() => chat.id),
+    .references(() => chat.id, { onDelete: 'cascade' }),
   role: varchar('role').notNull(),
   parts: json('parts').notNull(),
   attachments: json('attachments').notNull(),
@@ -74,17 +121,15 @@ export const message = pgTable('Message_v2', {
 
 export type DBMessage = InferSelectModel<typeof message>;
 
-// DEPRECATED: The following schema is deprecated and will be removed in the future.
-// Read the migration guide at https://github.com/vercel/ai-chatbot/blob/main/docs/04-migrate-to-parts.md
 export const voteDeprecated = pgTable(
   'Vote',
   {
     chatId: uuid('chatId')
       .notNull()
-      .references(() => chat.id),
+      .references(() => chat.id, { onDelete: 'cascade' }),
     messageId: uuid('messageId')
       .notNull()
-      .references(() => messageDeprecated.id),
+      .references(() => messageDeprecated.id, { onDelete: 'cascade' }),
     isUpvoted: boolean('isUpvoted').notNull(),
   },
   (table) => {
@@ -101,10 +146,10 @@ export const vote = pgTable(
   {
     chatId: uuid('chatId')
       .notNull()
-      .references(() => chat.id),
+      .references(() => chat.id, { onDelete: 'cascade' }),
     messageId: uuid('messageId')
       .notNull()
-      .references(() => message.id),
+      .references(() => message.id, { onDelete: 'cascade' }),
     isUpvoted: boolean('isUpvoted').notNull(),
   },
   (table) => {
@@ -128,7 +173,7 @@ export const document = pgTable(
       .default('text'),
     userId: uuid('userId')
       .notNull()
-      .references(() => user.id),
+      .references(() => user.id, { onDelete: 'cascade' }),
   },
   (table) => {
     return {
@@ -151,7 +196,7 @@ export const suggestion = pgTable(
     isResolved: boolean('isResolved').notNull().default(false),
     userId: uuid('userId')
       .notNull()
-      .references(() => user.id),
+      .references(() => user.id, { onDelete: 'cascade' }),
     createdAt: timestamp('createdAt').notNull(),
   },
   (table) => ({
@@ -159,7 +204,7 @@ export const suggestion = pgTable(
     documentRef: foreignKey({
       columns: [table.documentId, table.documentCreatedAt],
       foreignColumns: [document.id, document.createdAt],
-    }),
+    }).onDelete('cascade'),
   }),
 );
 
@@ -177,7 +222,7 @@ export const stream = pgTable(
     chatRef: foreignKey({
       columns: [table.chatId],
       foreignColumns: [chat.id],
-    }),
+    }).onDelete('cascade'),
   }),
 );
 

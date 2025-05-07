@@ -18,6 +18,7 @@ import { toast } from './toast';
 import type { Session } from 'next-auth';
 import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
+import type { Chat as DBChat } from '@/lib/db/schema';
 
 export function Chat({
   id,
@@ -42,6 +43,12 @@ export function Chat({
     chatId: id,
     initialVisibilityType,
   });
+
+  const { data: chatData, isLoading: isLoadingChatData } = useSWR<{ clientId: string | null } | null>(
+    id ? `/api/chats/${id}` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   const {
     messages,
@@ -111,6 +118,8 @@ export function Chat({
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
 
+  const isInputDisabled = !isReadonly && !isLoadingChatData && !chatData?.clientId;
+
   return (
     <>
       <div className="flex flex-col min-w-0 h-dvh bg-background">
@@ -148,6 +157,7 @@ export function Chat({
               setMessages={setMessages}
               append={append}
               selectedVisibilityType={visibilityType}
+              disabled={isInputDisabled}
             />
           )}
         </form>

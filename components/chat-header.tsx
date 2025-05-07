@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useWindowSize } from 'usehooks-ts';
+import { useState } from 'react';
 
 import { ModelSelector } from '@/components/model-selector';
 import { SidebarToggle } from '@/components/sidebar-toggle';
@@ -13,6 +14,8 @@ import { memo } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { type VisibilityType, VisibilitySelector } from './visibility-selector';
 import type { Session } from 'next-auth';
+import { SelectClientDialog } from './select-client-dialog';
+import { toast } from './toast';
 
 function PureChatHeader({
   chatId,
@@ -29,8 +32,33 @@ function PureChatHeader({
 }) {
   const router = useRouter();
   const { open } = useSidebar();
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
 
   const { width: windowWidth } = useWindowSize();
+
+  const handleClientSelect = async (clientId: string) => {
+    try {
+      const response = await fetch('/api/chats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clientId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create chat');
+      }
+
+      const { id: newChatId } = await response.json();
+      toast({ type: 'success', description: 'New chat created.' });
+      router.push(`/chat/${newChatId}`);
+    } catch (error) {
+      console.error('Failed to create chat:', error);
+      toast({ type: 'error', description: `Error creating chat: ${error instanceof Error ? error.message : 'Unknown error'}` });
+    }
+  };
 
   return (
     <header className="flex sticky top-0 bg-background py-1.5 items-center px-2 md:px-2 gap-2">
@@ -43,8 +71,7 @@ function PureChatHeader({
               variant="outline"
               className="order-2 md:order-1 md:px-2 px-2 md:h-fit ml-auto md:ml-0"
               onClick={() => {
-                router.push('/');
-                router.refresh();
+                setIsClientDialogOpen(true);
               }}
             >
               <PlusIcon />
@@ -83,6 +110,12 @@ function PureChatHeader({
           Deploy with Vercel
         </Link>
       </Button>
+
+      <SelectClientDialog
+        open={isClientDialogOpen}
+        onOpenChange={setIsClientDialogOpen}
+        onClientSelect={handleClientSelect}
+      />
     </header>
   );
 }

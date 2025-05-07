@@ -64,6 +64,13 @@
       "when": 1746503667272,
       "tag": "0008_thankful_midnight",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1746576569310,
+      "tag": "0009_add-auth-tables-and-fk-rules",
+      "breakpoints": true
     }
   ]
 }
