@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { auth } from '@/app/(auth)/auth';
 import { db } from '@/lib/db';
 import { chat } from '@/lib/db/schema';
 
@@ -15,7 +15,10 @@ export async function POST(req: Request) {
     const { clientId } = body;
 
     if (!clientId) {
-      return NextResponse.json({ error: 'clientId is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'clientId is required' },
+        { status: 400 },
+      );
     }
 
     // Insert new chat associated with the client
@@ -31,12 +34,18 @@ export async function POST(req: Request) {
       .returning({ id: chat.id });
 
     if (!newChat || newChat.length === 0) {
-      return NextResponse.json({ error: 'Failed to create chat' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to create chat' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ id: newChat[0].id }, { status: 201 });
   } catch (error) {
     console.error('Failed to create chat:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
 }

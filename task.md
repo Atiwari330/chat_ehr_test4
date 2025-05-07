@@ -18,18 +18,18 @@ The Client feature is fully wired up:
 
 You can now assume a populated `Client` table and fetch clients via the API. Proceed with Story 2 to require selecting a client when creating a new chat.
 
-## Story&nbsp;2 – “New Chat” Requires Client
-- [ ] Add `POST /api/chat?clientId=` API to create chat with FK
-- [ ] Build `components/select-client-dialog.tsx` (modal + searchable list)
-- [ ] Modify "New Chat" button to open dialog and create chat on select
-- [ ] Disable textarea until `chat.clientId` present in `chat-input`
-- [ ] **TEST:** click “New Chat” → pick client → chat opens, input enabled
+## Story&nbsp;2 – "New Chat" Requires Client
+- [x] Add `POST /api/chats` API to create chat with clientId FK
+- [x] Build `components/select-client-dialog.tsx` (modal + searchable list)
+- [x] Modify "New Chat" button to open dialog and create chat on select
+- [x] Disable textarea until `chat.clientId` present in `chat-input`
+- [x] **TEST:** click "New Chat" → pick client → chat opens, input enabled
 
 ## Story&nbsp;3 – Inject Client Context & Generate SOAP Note
 - [ ] Add `lib/utils/build-client-context.ts` (row → string)
 - [ ] Patch chat completion handler to prepend client profile
 - [ ] Add keyword trigger for SOAP progress-note template
-- [ ] **TEST:** ask “Write a SOAP progress note” → response follows S/O/A/P and includes client facts; verify server logs
+- [ ] **TEST:** ask "Write a SOAP progress note" → response follows S/O/A/P and includes client facts; verify server logs
 
 ## Story&nbsp;4 – Persist & Display Progress-Note Artifact
 - [ ] Ensure LLM invokes `createDocument` tool (`kind: "text"`)
@@ -39,10 +39,10 @@ You can now assume a populated `Client` table and fetch clients via the API. Pro
 ## Story&nbsp;5 – Sidebar Label Includes Client Name
 - [ ] Set chat `title` (e.g., "Progress note") on first message if keywords detected
 - [ ] Update sidebar query to show "{Client} – {Chat.title}"
-- [ ] **TEST:** create new chat → sidebar shows “John Smith – Progress note”
+- [ ] **TEST:** create new chat → sidebar shows "John Smith – Progress note"
 
 ## Story&nbsp;6 – Polishing & Demo Script
-- [ ] Add README “Quick demo” section (clone → migrate → seed → dev)
+- [ ] Add README "Quick demo" section (clone → migrate → seed → dev)
 - [ ] Add npm script `pnpm demo` chaining migrate+seed+dev
 - [ ] Add console banner listing demo clients on startup
 - [x] **TEST:** run `pnpm demo`; complete end-to-end flow in ≤60 s
