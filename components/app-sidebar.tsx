@@ -1,8 +1,10 @@
 'use client';
 
 import type { User } from 'next-auth';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import useSWR from 'swr';
 
 import { PlusIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
@@ -19,11 +21,37 @@ import {
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { SelectClientDialog } from './select-client-dialog';
+import { ClientDemographics } from './client-demographics';
+import { useArtifactSelector } from '@/hooks/use-artifact';
+import { fetcher } from '@/lib/utils';
 
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
+  const params = useParams();
+  const chatId = params?.id as string | undefined;
+
   const { setOpenMobile } = useSidebar();
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [showDemographics, setShowDemographics] = useState(false);
+
+  // Check if artifact is in full-screen mode
+  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+
+  // Fetch current chat data to get clientId
+  const { data: chatData } = useSWR<{ clientId: string | null }>(
+    chatId ? `/api/chats/${chatId}` : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+
+  // When chat changes or artifact visibility changes, update the UI
+  useEffect(() => {
+    if (chatId && chatData?.clientId && !isArtifactVisible) {
+      setShowDemographics(true);
+    } else {
+      setShowDemographics(false);
+    }
+  }, [chatId, chatData?.clientId, isArtifactVisible]);
 
   const handleClientSelect = async (clientId: string) => {
     try {
@@ -86,9 +114,22 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </div>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarHistory user={user} />
-      </SidebarContent>
+
+      {/* Animated content transition between chat history and demographics */}
+      <AnimatePresence mode="wait">
+        {showDemographics && chatData?.clientId ? (
+          <ClientDemographics
+            key="demographics"
+            clientId={chatData.clientId}
+            onBackClick={() => setShowDemographics(false)}
+          />
+        ) : (
+          <SidebarContent key="chat-history">
+            <SidebarHistory user={user} />
+          </SidebarContent>
+        )}
+      </AnimatePresence>
+
       <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
 
       {/* Client Selection Dialog */}
