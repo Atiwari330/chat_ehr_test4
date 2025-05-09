@@ -16,7 +16,8 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
+import { ArrowUpIcon, PaperclipIcon, StopIcon, MicIcon } from './icons'; // Assuming MicIcon will be created
+import { TranscriptionModal } from './transcription-modal';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -61,6 +62,7 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const [isTranscriptionModalOpen, setIsTranscriptionModalOpen] = useState(false);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -294,9 +296,15 @@ function PureMultimodalInput({
         }}
       />
 
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
+      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start items-center gap-1">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} disabled={disabled} />
+        <TranscriptionButton onClick={() => setIsTranscriptionModalOpen(true)} status={status} disabled={disabled} />
       </div>
+
+      <TranscriptionModal
+        isOpen={isTranscriptionModalOpen}
+        onClose={() => setIsTranscriptionModalOpen(false)}
+      />
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
         {status === 'submitted' ? (
@@ -354,6 +362,34 @@ function PureAttachmentsButton({
 }
 
 const AttachmentsButton = memo(PureAttachmentsButton);
+
+function PureTranscriptionButton({
+  onClick,
+  status,
+  disabled,
+}: {
+  onClick: () => void;
+  status: UseChatHelpers['status'];
+  disabled?: boolean;
+}) {
+  return (
+    <Button
+      data-testid="transcription-button"
+      className="rounded-md p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
+      onClick={(event) => {
+        event.preventDefault();
+        onClick();
+      }}
+      disabled={status !== 'ready' || disabled}
+      variant="ghost"
+    >
+      {/* Using PaperclipIcon as a placeholder, replace with MicIcon */}
+      <MicIcon size={14} />
+    </Button>
+  );
+}
+
+const TranscriptionButton = memo(PureTranscriptionButton);
 
 function PureStopButton({
   stop,

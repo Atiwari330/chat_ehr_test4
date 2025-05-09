@@ -17,6 +17,22 @@ export const BotIcon = () => {
   );
 };
 
+export const MicIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      viewBox="0 0 16 16"
+      width={size}
+      style={{ color: 'currentcolor' }}
+      fill="currentColor"
+    >
+      <path d="M8 1a2 2 0 0 0-2 2v4a2 2 0 0 0 4 0V3a2 2 0 0 0-2-2zM6 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7zm7 0a1 1 0 0 0-1-1h-1v1a4 4 0 0 0 4 4v-1a1 1 0 0 0-1-1h-1V7zM3 8a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4V12H5a1 1 0 0 0-1-1V8z"/>
+      <path d="M12.5 7a.5.5 0 0 1 .5.5v1a3.5 3.5 0 0 1-3.5 3.5h-1a.5.5 0 0 1 0-1h1a2.5 2.5 0 0 0 2.5-2.5v-1a.5.5 0 0 1 .5-.5zM3.5 7a.5.5 0 0 0-.5.5v1a3.5 3.5 0 0 0 3.5 3.5h1a.5.5 0 0 0 0-1h-1a2.5 2.5 0 0 1-2.5-2.5v-1a.5.5 0 0 0-.5-.5z"/>
+    </svg>
+  );
+};
+
 export const UserIcon = () => {
   return (
     <svg
