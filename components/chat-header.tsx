@@ -65,40 +65,62 @@ function PureChatHeader({
 
   const handleStartLiveTranscript = async (
     meetLink: string,
-    onTranscriptSegment: (segment: string) => void // Callback from modal, though modal doesn't use it directly
+    // The onTranscriptSegment callback from modal is not directly used here for API call,
+    // but kept if direct UI updates from this function were ever needed.
+    // For now, transcript updates will be driven by WebSocket in Phase III.
+    onTranscriptSegment: (segment: string) => void 
   ) => {
     console.log('Attempting to start live transcript for:', meetLink);
     setLiveTranscripts([]); // Clear previous transcripts
+    // isLoading state is managed within LiveTranscriptModal
 
-    toast({ type: 'success', description: `Attempting to start transcript for: ${meetLink}` });
+    try {
+      const response = await fetch('/api/transcript/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ meetLink }),
+      });
 
-    // TODO: Replace with actual API call to backend to start the bot
-    // For now, simulate receiving transcript segments
-    // This simulation logic will be replaced by WebSocket messages from the backend
-    const simulateTranscription = async () => {
-      const segments = [
-        "Hello, this is the first segment.",
-        "Testing live transcription feature.",
-        "The bot seems to be working.",
-        "More updates will follow shortly.",
-        "This is a longer segment to test scrolling and display of multiple lines of text to see how it behaves in the UI.",
-        "Almost done with the simulation."
-      ];
-      for (const segment of segments) {
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
-        setLiveTranscripts(prev => [...prev, segment]);
-        // The onTranscriptSegment callback is available if needed, but modal reads from liveTranscripts prop
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to start transcript process via API');
       }
-      toast({ type: 'success', description: 'Live transcript simulation finished.'});
-      // In a real scenario, the modal's isTranscribing state would be managed by WebSocket events
-      // or a stop signal from the backend/user.
-    };
 
-    simulateTranscription().catch(error => {
-      console.error("Transcription simulation error:", error);
-      toast({ type: 'error', description: 'Error during transcript simulation.' });
-    });
-    // We don't close the modal here; it stays open to display transcripts.
+      toast({ type: 'success', description: result.message || 'Live transcript process initiated.' });
+      console.log('API response:', result); // Log connectionId, containerName
+
+      // Keep the simulation for now to show UI feedback.
+      // This will be replaced by WebSocket handling in Phase III.
+      const simulateTranscription = async () => {
+        const segments = [
+          "Hello, this is the first segment (simulated).",
+          "API call successful, bot process should be starting.",
+          "Waiting for real transcripts via WebSocket (Phase III)...",
+        ];
+        for (const segment of segments) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          setLiveTranscripts(prev => [...prev, segment]);
+        }
+        // toast({ type: 'success', description: 'Live transcript simulation finished.'});
+      };
+      simulateTranscription().catch(simError => {
+         console.error("Transcription simulation error:", simError);
+         toast({ type: 'error', description: 'Error during transcript simulation.' });
+      });
+
+    } catch (error) {
+      console.error("Error starting live transcript via API:", error);
+      toast({ type: 'error', description: `API Error: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      // If API call fails, the LiveTranscriptModal's isTranscribing state should be reset.
+      // This might require passing a setter for isTranscribing or having the modal handle this.
+      // For now, the modal's own isLoading will reset, but isTranscribing might stay true.
+      // This will be refined when actual WebSocket connection status is available.
+    }
+    // Do not set isLoading here, it's managed by the modal.
+    // Modal also stays open to show transcripts or errors.
   };
 
   const clearLiveTranscripts = () => {
