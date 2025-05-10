@@ -16,8 +16,9 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon, MicIcon } from './icons'; // Assuming MicIcon will be created
+import { ArrowUpIcon, PaperclipIcon, StopIcon, MicIcon, PlusIcon } from './icons'; // Assuming MicIcon will be created
 import { TranscriptionModal } from './transcription-modal';
+import { TranscriptUploadModal } from './transcript-upload-modal'; // Import the new modal
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -63,6 +64,27 @@ function PureMultimodalInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const [isTranscriptionModalOpen, setIsTranscriptionModalOpen] = useState(false);
+  const [extractedPdfText, setExtractedPdfText] = useState<string | null>(null);
+  const [showTranscriptModal, setShowTranscriptModal] = useState<boolean>(false);
+  const pdfFileInputRef = useRef<HTMLInputElement>(null); // Moved here for correct scope
+
+  const handleCloseTranscriptModal = () => {
+    // The modal itself will handle setShowTranscriptModal(false) and setExtractedPdfText(null).
+    // This parent callback is primarily for resetting the file input.
+    if (pdfFileInputRef.current) {
+      pdfFileInputRef.current.value = ''; // Reset file input
+    }
+  };
+
+  useEffect(() => {
+    const setWorkerSrc = async () => {
+      if (typeof window !== 'undefined') { // Ensures client-side
+        const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      }
+    };
+    setWorkerSrc();
+  }, []);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -111,6 +133,7 @@ function PureMultimodalInput({
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // pdfFileInputRef was moved up for handleCloseTranscriptModal
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
@@ -189,6 +212,40 @@ function PureMultimodalInput({
     [setAttachments],
   );
 
+  const handlePdfFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    // Reset for re-uploads of the same file
+    if (pdfFileInputRef.current) {
+      pdfFileInputRef.current.value = '';
+    }
+
+    try {
+      const { getDocument } = await import('pdfjs-dist/build/pdf.mjs'); // Dynamic import
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfDoc = await getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => ('str' in item ? item.str : '')).join(' ');
+        fullText += pageText + '\n';
+      }
+      setExtractedPdfText(fullText.trim());
+      console.log("Extracted PDF Text:", fullText.trim()); // For testing
+      setShowTranscriptModal(true); // To trigger modal in Story 2
+      // toast.success("PDF processed successfully!"); // Optional success toast
+    } catch (error) {
+      console.error("Failed to parse PDF:", error);
+      toast.error("Failed to parse PDF. Please try a different file.");
+      setExtractedPdfText(null);
+      setShowTranscriptModal(false);
+    }
+  };
+
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
 
   useEffect(() => {
@@ -224,6 +281,16 @@ function PureMultimodalInput({
         )}
       </AnimatePresence>
 
+      <TranscriptUploadModal
+        isOpen={showTranscriptModal}
+        onClose={handleCloseTranscriptModal}
+        append={append}
+        chatId={chatId}
+        extractedText={extractedPdfText}
+        setExtractedPdfText={setExtractedPdfText}
+        setShowTranscriptModal={setShowTranscriptModal}
+      />
+
       {messages.length === 0 &&
         attachments.length === 0 &&
         uploadQueue.length === 0 && (
@@ -240,6 +307,14 @@ function PureMultimodalInput({
         ref={fileInputRef}
         multiple
         onChange={handleFileChange}
+        tabIndex={-1}
+      />
+      <input
+        type="file"
+        className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
+        ref={pdfFileInputRef}
+        accept=".pdf"
+        onChange={handlePdfFileChange}
         tabIndex={-1}
       />
 
@@ -298,6 +373,11 @@ function PureMultimodalInput({
 
       <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start items-center gap-1">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} disabled={disabled} />
+        <PdfUploadButton
+          onClick={() => pdfFileInputRef.current?.click()}
+          status={status}
+          disabled={disabled}
+        />
         <TranscriptionButton onClick={() => setIsTranscriptionModalOpen(true)} status={status} disabled={disabled} />
       </div>
 
@@ -390,6 +470,33 @@ function PureTranscriptionButton({
 }
 
 const TranscriptionButton = memo(PureTranscriptionButton);
+
+function PurePdfUploadButton({
+  onClick,
+  status,
+  disabled,
+}: {
+  onClick: () => void;
+  status: UseChatHelpers['status'];
+  disabled?: boolean;
+}) {
+  return (
+    <Button
+      data-testid="pdf-upload-button"
+      title="Upload Transcript PDF" // Tooltip
+      className="rounded-md p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
+      onClick={(event) => {
+        event.preventDefault();
+        onClick();
+      }}
+      disabled={status !== 'ready' || disabled}
+      variant="ghost"
+    >
+      <PlusIcon size={14} />
+    </Button>
+  );
+}
+const PdfUploadButton = memo(PurePdfUploadButton);
 
 function PureStopButton({
   stop,

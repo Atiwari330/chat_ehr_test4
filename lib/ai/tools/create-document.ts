@@ -15,13 +15,15 @@ interface CreateDocumentProps {
 export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
   tool({
     description:
-      'Create a document for a writing or content creation activities. This tool will call other functions that will generate the contents of the document based on the title and kind.',
+      'Create a document for a writing or content creation activities. If content is provided, it will use that content directly. Otherwise, this tool will call other functions that will generate the contents of the document based on the title and kind.',
     parameters: z.object({
       title: z.string(),
       kind: z.enum(artifactKinds),
+      content: z.string().optional().describe('The pre-generated content for the document, if available. If provided, this content will be used directly.'),
     }),
-    execute: async ({ title, kind }) => {
+    execute: async ({ title, kind, content }) => {
       const id = generateUUID();
+      console.log('[createDocument tool] Executing with:', { title, kind, contentProvided: !!content }); // Server log
 
       dataStream.writeData({
         type: 'kind',
@@ -57,6 +59,7 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         title,
         dataStream,
         session,
+        content, // Pass the new content parameter
       });
 
       dataStream.writeData({ type: 'finish', content: '' });

@@ -21,6 +21,7 @@ export interface CreateDocumentCallbackProps {
   title: string;
   dataStream: DataStreamWriter;
   session: Session;
+  content?: string; // Add optional content property
 }
 
 export interface UpdateDocumentCallbackProps {
@@ -38,17 +39,18 @@ export interface DocumentHandler<T = ArtifactKind> {
 
 export function createDocumentHandler<T extends ArtifactKind>(config: {
   kind: T;
-  onCreateDocument: (params: CreateDocumentCallbackProps) => Promise<string>;
+  onCreateDocument: (params: CreateDocumentCallbackProps & { content?: string }) => Promise<string>; // Adjust type here too
   onUpdateDocument: (params: UpdateDocumentCallbackProps) => Promise<string>;
 }): DocumentHandler<T> {
   return {
     kind: config.kind,
-    onCreateDocument: async (args: CreateDocumentCallbackProps) => {
+    onCreateDocument: async (args: CreateDocumentCallbackProps) => { // args here will include content if passed
       const draftContent = await config.onCreateDocument({
         id: args.id,
         title: args.title,
         dataStream: args.dataStream,
         session: args.session,
+        content: args.content, // Pass content through
       });
 
       if (args.session?.user?.id) {

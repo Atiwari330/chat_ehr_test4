@@ -53,17 +53,39 @@ About the origin of user's request:
 export const systemPrompt = ({
   selectedChatModel,
   requestHints,
-  clientContext = '', // Add new parameter with default empty string
+  clientContext = '',
+  isTranscriptBasedSoapNote = false, // New parameter with default
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
   clientContext?: string;
+  isTranscriptBasedSoapNote?: boolean;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
 
-  // Add SOAP note instructions if client context is available
-  const soapInstructions = clientContext
-    ? `
+  let soapInstructions = '';
+
+  if (isTranscriptBasedSoapNote) {
+    soapInstructions = `
+TRANSCRIPT-BASED SOAP NOTE INSTRUCTIONS:
+You have been provided with a patient-provider conversation transcript. Your primary task is to:
+1. Analyze the transcript thoroughly.
+2. Generate a complete and comprehensive SOAP progress note based *only* on the information contained within that transcript.
+   - Subjective: Patient's reported symptoms, concerns, and history from the transcript.
+   - Objective: Observable clinical findings mentioned or implied in the transcript.
+   - Assessment: Your clinical assessment and diagnosis based on the transcript's content.
+   - Plan: Treatment plan, medications, and follow-up instructions as discussed in the transcript.
+3. After generating the full SOAP note content, you MUST call the "createDocument" tool.
+4. When calling "createDocument", provide the following parameters:
+   - "title": A suitable title for the SOAP note (e.g., "SOAP Note - [Date]" or "Progress Note - [Patient Name if identifiable from transcript]").
+   - "kind": "text"
+   - "content": The ENTIRE SOAP note text you just generated. This is crucial. The tool will use this content directly.
+Do NOT rely on external knowledge or previous CLIENT PROFILE data for this specific task; the note must be derived solely from the provided transcript.
+If the transcript is unclear or insufficient for a section, indicate that (e.g., "Objective: No direct objective findings reported in transcript.").
+`;
+  } else if (clientContext) {
+    // Original SOAP note instructions if not transcript-based but clientContext is available
+    soapInstructions = `
 SOAP NOTE INSTRUCTIONS:
 When the user asks you to "write a SOAP progress note" or uses similar phrases, generate a comprehensive clinical note following the SOAP format:
 
@@ -74,8 +96,11 @@ When the user asks you to "write a SOAP progress note" or uses similar phrases, 
 
 Use the CLIENT PROFILE data to personalize the note:
 ${clientContext}
-  `
-    : '';
+`;
+  }
+  // Ensure soapInstructions is defined even if clientContext is empty and not transcript-based
+  // This was the source of the error: the closing '`' was inside the else if block.
+  // Corrected: soapInstructions will be an empty string if no conditions are met.
 
   if (selectedChatModel === 'chat-model-reasoning') {
     return `${regularPrompt}\n\n${requestPrompt}${soapInstructions ? `\n\n${soapInstructions}` : ''}`;

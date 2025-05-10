@@ -141,6 +141,18 @@ export async function POST(request: Request) {
       country,
     };
 
+    // Determine if this is a transcript-based SOAP note request
+    let isTranscriptRequest = false;
+    if (message.parts.length > 0 && message.parts[0].type === 'text') {
+      isTranscriptRequest = message.parts[0].text.startsWith(
+        'Please generate a SOAP progress note based on the following transcript:',
+      );
+    }
+    if (isTranscriptRequest) {
+      console.log('[Chat API] Transcript-based SOAP note request identified.');
+    }
+
+
     await saveMessages({
       messages: [
         {
@@ -159,7 +171,9 @@ export async function POST(request: Request) {
 
     // Fetch client data if available
     let clientContext = '';
-    if (chat?.clientId) {
+    // If it's a transcript request, we want to ignore clientContext for the system prompt
+    // as per the instructions in prompts.ts to focus solely on the transcript.
+    if (chat?.clientId && !isTranscriptRequest) {
       try {
         const clientData = await db
           .select()
@@ -174,7 +188,11 @@ export async function POST(request: Request) {
         console.error('Error fetching client data:', error);
         // Continue without client context if there's an error
       }
+    } else if (isTranscriptRequest) {
+      console.log('[Chat API] Forcing empty clientContext for transcript-based SOAP note.');
+      clientContext = ''; // Ensure clientContext is empty for transcript requests
     }
+
 
     const stream = createDataStream({
       execute: (dataStream) => {
@@ -189,7 +207,8 @@ export async function POST(request: Request) {
             system: systemPrompt({
               selectedChatModel,
               requestHints,
-              clientContext,
+              clientContext, // This will be empty if isTranscriptRequest is true
+              isTranscriptBasedSoapNote: isTranscriptRequest,
             }),
             messages,
             maxSteps: 5,
