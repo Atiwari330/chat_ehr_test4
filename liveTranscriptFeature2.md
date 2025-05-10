@@ -30,9 +30,15 @@
 
 ## Phase I: Frontend - UI Elements
 
-- [ ] **Story: Add "Collect Live Transcript" Button** (`components/chat-header.tsx`)
-- [ ] **Story: Create "Start Live Transcript" Modal** (`components/live-transcript-modal.tsx`, `components/chat-header.tsx`)
-- [ ] **Story: Display Live Transcript Stream in UI** (`components/live-transcript-modal.tsx`)
+- [x] **Story: Add "Collect Live Transcript" Button** (`components/chat-header.tsx`)
+    - *Action:* Added a button with `MicIcon` to `ChatHeader`, visible when `chatId` exists and not `isReadonly`.
+    - *Verification:* Button appears as expected.
+- [x] **Story: Create "Start Live Transcript" Modal** (`components/live-transcript-modal.tsx`, `components/chat-header.tsx`)
+    - *Action:* Created `LiveTranscriptModal` with input for Google Meet link and Start/Cancel buttons. Integrated state and click handler in `ChatHeader` to open this modal.
+    - *Verification:* Modal opens on button click, form elements are present.
+- [x] **Story: Display Live Transcript Stream in UI** (`components/live-transcript-modal.tsx`)
+    - *Action:* Added state for `liveTranscripts` in `ChatHeader` and passed it to `LiveTranscriptModal`. Modal now has a scrollable area to display incoming transcript segments and a "Stop Transcription" button. `handleStartLiveTranscript` in `ChatHeader` simulates receiving segments.
+    - *Verification:* Modal can display simulated transcript segments.
 
 ## Phase II: Backend - API Endpoint & Bot Integration
 
