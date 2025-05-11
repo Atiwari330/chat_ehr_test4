@@ -41,3 +41,18 @@ yarn-error.log*
 /playwright-report/
 /blob-report/
 /playwright/*
+
+
+# PNPM executable (if it's the binary at the root)
+/pnpm
+
+# Suspected temporary/build files within vexa-bot/core/
+/vexa-bot/core/=
+/vexa-bot/core/CACHED
+/vexa-bot/core/\[base
+/vexa-bot/core/\[internal]
+/vexa-bot/core/\[runtime
+/vexa-bot/core/exporting
+/vexa-bot/core/naming
+/vexa-bot/core/resolve
+/vexa-bot/core/transferring
