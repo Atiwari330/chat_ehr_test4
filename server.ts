@@ -24,6 +24,7 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 // Ensure DEEPGRAM_API_KEY is set
+
 if (!process.env.DEEPGRAM_API_KEY) {
   console.error("DEEPGRAM_API_KEY environment variable is not set. WebSocket server for audio intake will not function correctly.");
   // process.exit(1); // Or handle more gracefully depending on requirements
@@ -106,7 +107,7 @@ app.prepare().then(() => {
     streamData.deepgramConnection = dgConnection;
 
     dgConnection.on(LiveTranscriptionEvents.Open, () => {
-      console.log(`Deepgram connection opened for ${connectionId}.`);
+      console.log(`[DEEPGRAM_OPEN ${connectionId}] Deepgram connection opened.`);
     });
 
     dgConnection.on(LiveTranscriptionEvents.Transcript, (data) => {
@@ -115,14 +116,16 @@ app.prepare().then(() => {
         // console.log(`Deepgram transcript for ${connectionId} (is_final: ${data.is_final}, speech_final: ${data.speech_final}): ${transcript}`);
         if (streamData.sseStreamController) {
           try {
+            const ssePayload = {
+              type: 'transcript',
+              segment: transcript,
+              isFinal: data.is_final,
+              speechFinal: data.speech_final
+            };
+            console.log(`[SERVER_SSE_SEND ${connectionId}] Payload:`, JSON.stringify(ssePayload));
             streamData.sseStreamController.enqueue(
               new TextEncoder().encode(
-                `data: ${JSON.stringify({
-                  type: 'transcript',
-                  segment: transcript,
-                  isFinal: data.is_final, // is_final from Deepgram
-                  speechFinal: data.speech_final // speech_final indicates end of an utterance
-                })}\n\n`
+                `data: ${JSON.stringify(ssePayload)}\n\n`
               )
             );
           } catch (error) {
@@ -134,7 +137,7 @@ app.prepare().then(() => {
     });
 
     dgConnection.on(LiveTranscriptionEvents.Error, (error) => {
-      console.error(`Deepgram error for ${connectionId}:`, error);
+      console.error(`[DEEPGRAM_ERROR ${connectionId}] Deepgram error:`, error);
       if (streamData.sseStreamController) {
         try {
           streamData.sseStreamController.enqueue(
@@ -151,7 +154,7 @@ app.prepare().then(() => {
     });
 
     dgConnection.on(LiveTranscriptionEvents.Close, (event) => {
-      console.log(`Deepgram connection closed for ${connectionId}. Code: ${event.code}, Reason: ${event.reason}`);
+      console.log(`[DEEPGRAM_CLOSE ${connectionId}] Deepgram connection closed. Code: ${event.code}, Reason: ${event.reason}`);
       // No need to explicitly clean up streamData.deepgramConnection here if we re-create on new bot socket.
       // However, if the bot socket is still open, this might indicate an issue.
       if (streamData.sseStreamController && streamData.sseStreamController.desiredSize !== null) { // Check if controller is still active

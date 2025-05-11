@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream({
     start(controller) {
-      console.log(`SSE stream starting for connectionId: ${connectionId}`);
+      console.log(`[STREAM_ROUTE_SSE_START ${connectionId}] SSE stream starting.`);
       // It's crucial to update the sseStreamController in the activeStreams map
       // If streamData was retrieved before a previous controller was cleaned up, ensure it's fresh.
       const currentStreamData = activeStreams.get(connectionId);
@@ -138,6 +138,7 @@ export async function GET(request: NextRequest) {
       botProcess.stdout.on('data', (data) => {
         const logLines = data.toString().trim().split('\n');
         logLines.forEach((line: string) => {
+          console.log(`[VEXA_STDOUT ${connectionId}] Data: ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`);
           if (!controller.desiredSize) return; // Stop if stream closed
           try {
             const logEntry = JSON.parse(line); 
@@ -151,18 +152,18 @@ export async function GET(request: NextRequest) {
       botProcess.stderr.on('data', (data) => {
         if (!controller.desiredSize) return;
         const message = data.toString().trim();
-        console.error(`[VexaBot STDERR ${connectionId}]: ${message}`);
+        console.error(`[VEXA_STDERR ${connectionId}] Error: ${message}`);
         sendSseMessage(controller, { type: "error", source: "vexa-bot-stderr", message });
       });
 
       botProcess.on('close', (code) => {
-        console.log(`VexaBot container ${containerName} (ConnectionId: ${connectionId}) exited with code ${code}.`);
+        console.log(`[VEXA_CLOSE ${connectionId}] VexaBot container ${containerName} exited with code ${code}.`);
         sendSseMessage(controller, { type: "status", source:"server", message: `Bot exited with code ${code}. Stream closing.` });
         cleanupResources(connectionId); 
       });
 
       botProcess.on('error', (err) => {
-        console.error(`Failed to start or run Docker container ${containerName} for ${connectionId}:`, err);
+        console.error(`[VEXA_PROC_ERROR ${connectionId}] Failed to start/run Docker container ${containerName}:`, err);
         sendSseMessage(controller, { type: "error", source: "docker-process", message: `Failed to run bot: ${err.message}` });
         cleanupResources(connectionId); 
       });
