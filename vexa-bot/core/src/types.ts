@@ -5,6 +5,7 @@ export type BotConfig = {
   token: string,
   connectionId: string,
   nativeMeetingId: string,
+  wsUrl: string; // Added for Phase III: WebSocket URL for audio intake
   automaticLeave: {
     waitingRoomTimeout: number,
     noOneJoinedTimeout: number,

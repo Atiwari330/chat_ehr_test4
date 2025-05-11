@@ -108,7 +108,7 @@ importers:
         specifier: ^1.0.5
         version: 1.0.5
       dotenv:
-        specifier: ^16.4.5
+        specifier: ^16.4.7
         version: 16.4.7
       drizzle-orm:
         specifier: ^0.34.0
@@ -218,6 +218,9 @@ importers:
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
+      ws:
+        specifier: ^8.18.2
+        version: 8.18.2(bufferutil@4.0.9)
       zod:
         specifier: ^3.23.8
         version: 3.24.2
@@ -255,6 +258,9 @@ importers:
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       drizzle-kit:
         specifier: ^0.25.0
         version: 0.25.0
@@ -1829,6 +1835,9 @@ packages:
 
   '@types/uuid@10.0.0':
     resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@typescript-eslint/parser@7.2.0':
     resolution: {integrity: sha512-5FKsVcHTk6TafQKQbuIVkXq58Fnbkd2wDL4LB7AURN7RUOu1utVP+G8+6u3ZhEroW3DF6hyo3ZEXxgKgp4KeCg==}
@@ -4163,8 +4172,8 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@8.18.1:
-    resolution: {integrity: sha512-RKW2aJZMXeMxVpnZ6bck+RswznaxmzdULiBr6KY7XkTnW8uvt0iT9H5DkHUChXrc+uurzwa0rVI16n/Xzjdz1w==}
+  ws@8.18.2:
+    resolution: {integrity: sha512-DMricUmwGZUVr++AEAe2uiVM7UoO9MAVZMDu05UQOaUII0lp+zOzLLU4Xqh/JvTqklB1T4uELaaPBKyjE1r4fQ==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -4388,7 +4397,7 @@ snapshots:
       cross-fetch: 3.2.0
       deepmerge: 4.3.1
       events: 3.3.0
-      ws: 8.18.1(bufferutil@4.0.9)
+      ws: 8.18.2(bufferutil@4.0.9)
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -5456,6 +5465,10 @@ snapshots:
 
   '@types/uuid@10.0.0': {}
 
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 22.13.10
+
   '@typescript-eslint/parser@7.2.0(eslint@8.57.1)(typescript@5.8.2)':
     dependencies:
       '@typescript-eslint/scope-manager': 7.2.0
@@ -5516,7 +5529,7 @@ snapshots:
     dependencies:
       '@neondatabase/serverless': 0.9.5
       bufferutil: 4.0.9
-      ws: 8.18.1(bufferutil@4.0.9)
+      ws: 8.18.2(bufferutil@4.0.9)
     transitivePeerDependencies:
       - utf-8-validate
 
@@ -8310,7 +8323,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.18.1(bufferutil@4.0.9):
+  ws@8.18.2(bufferutil@4.0.9):
     optionalDependencies:
       bufferutil: 4.0.9
 

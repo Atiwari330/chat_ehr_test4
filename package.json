@@ -3,7 +3,7 @@
   "version": "3.0.19",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "tsx server.ts",
     "build": "tsx lib/db/migrate && next build",
     "start": "next start",
     "lint": "next lint && biome lint --write --unsafe",
@@ -52,7 +52,7 @@
     "codemirror": "^6.0.1",
     "date-fns": "^4.1.0",
     "diff-match-patch": "^1.0.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.4.7",
     "drizzle-orm": "^0.34.0",
     "fast-deep-equal": "^3.1.3",
     "framer-motion": "^11.3.19",
@@ -89,6 +89,7 @@
     "tailwindcss-animate": "^1.0.7",
     "usehooks-ts": "^3.1.0",
     "uuid": "^11.1.0",
+    "ws": "^8.18.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -103,6 +104,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.25.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",

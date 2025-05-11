@@ -17,34 +17,38 @@ import { ScrollArea } from '@/components/ui/scroll-area'; // For displaying tran
 
 interface LiveTranscriptModalProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: boolean) => void; // This will also handle stopping transcription if modal is closed while active
   onStartSubmit: (
     meetLink: string,
-    onTranscriptSegment: (segment: string) => void
+    onTranscriptSegment: (segment: string) => void // This callback might be vestigial
   ) => Promise<void>;
   transcripts: string[];
   clearTranscripts: () => void;
+  isTranscribing: boolean; // Now controlled by ChatHeader
+  stopTranscription: () => void; // Callback to stop transcription, passed from ChatHeader
 }
 
 export function LiveTranscriptModal({
   open,
-  onOpenChange,
+  onOpenChange, // ChatHeader's onOpenChange now handles stopping logic
   onStartSubmit,
   transcripts,
   clearTranscripts,
+  isTranscribing, // Prop from ChatHeader
+  stopTranscription, // Prop from ChatHeader
 }: LiveTranscriptModalProps) {
   const [meetLink, setMeetLink] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  // Local isTranscribing state is removed, now uses prop
 
   const handleModalOpenChange = (isOpen: boolean) => {
-    onOpenChange(isOpen);
+    onOpenChange(isOpen); // Call ChatHeader's onOpenChange, which includes stop logic
     if (!isOpen) {
-      // Reset state when modal is closed
+      // Reset local modal state when modal is closed by any means
       setMeetLink('');
-      setIsLoading(false);
-      setIsTranscribing(false);
-      clearTranscripts();
+      setIsLoading(false); 
+      // isTranscribing state is managed by ChatHeader, but clear local input
+      // clearTranscripts(); // ChatHeader might control this too, or modal can clear on close
     }
   };
 
@@ -67,7 +71,7 @@ export function LiveTranscriptModal({
     }
 
     setIsLoading(true);
-    setIsTranscribing(true); // Assume transcription starts on submit
+    // setIsTranscribing(true); // This is now controlled by ChatHeader via onStartSubmit
     try {
       await onStartSubmit(meetLink, (segment: string) => {
         // This callback is invoked by ChatHeader when a new transcript segment arrives.
@@ -77,8 +81,9 @@ export function LiveTranscriptModal({
       });
       // Don't close modal automatically, user might want to see transcript
     } catch (error) {
-      setIsTranscribing(false); // Stop transcribing on error
+      // setIsTranscribing(false); // This is now controlled by ChatHeader
       // Error toast is handled by the caller (onStartSubmit)
+      // If onStartSubmit throws, ChatHeader should handle resetting its isTranscribing state.
     } finally {
       setIsLoading(false);
       // setIsTranscribing will be set to false when the stream ends or is stopped by user/error.
@@ -153,10 +158,10 @@ export function LiveTranscriptModal({
                 type="button"
                 variant="destructive"
                 onClick={() => {
-                  setIsTranscribing(false);
-                  // TODO: Add logic to actually stop the backend transcription process
-                  toast({ type: 'success', description: 'Live transcript stopped by user.' });
+                  stopTranscription(); // Call the function passed from ChatHeader
+                  // UI feedback (toast, setIsTranscribing) is handled by ChatHeader
                 }}
+                disabled={isLoading} // Disable if start is in progress
               >
                 Stop Transcription
               </Button>

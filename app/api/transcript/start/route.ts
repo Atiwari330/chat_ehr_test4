@@ -1,22 +1,8 @@
 import { NextResponse } from 'next/server';
-import { spawn } from 'child_process';
-import { v4 as uuidv4 } from 'uuid'; // For generating unique connectionId
-
-// Define the structure of the BOT_CONFIG based on Vexa Bot's requirements
-interface BotConfig {
-  platform: "google_meet" | "zoom" | "teams";
-  meetingUrl: string | null;
-  botName: string;
-  token: string; // Purpose to be clarified, using empty string for now
-  connectionId: string;
-  nativeMeetingId: string;
-  automaticLeave: {
-    waitingRoomTimeout: number;
-    noOneJoinedTimeout: number;
-    everyoneLeftTimeout: number;
-  };
-  meeting_id?: number; // Optional internal ID
-}
+// import { spawn } from 'child_process'; // No longer spawning Docker here
+import { v4 as uuidv4 } from 'uuid';
+import { activeStreams } from '@/lib/active-streams'; // For storing BOT_CONFIG
+import type { BotConfig } from '@/vexa-bot/core/src/types'; // Use the actual BotConfig type
 
 export async function POST(request: Request) {
   try {
@@ -28,80 +14,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid Google Meet link provided. It must start with 'https://meet.google.com/'." }, { status: 400 });
     }
 
-    // 2. Read VEXA_BOT_DOCKER_SCRIPT_PATH from environment variables
-    // Note: VEXA_BOT_DOCKER_SCRIPT_PATH was for direct node execution.
-    // For Docker, we just need the image name. The script path is internal to the Docker image.
-    // We will use the image name 'vexa-bot-test' as built in Phase 0.
-    const dockerImageName = 'vexa-bot-test'; // Or a production image name from env var later
+    // 2. Generate connectionId
+    const connectionId = uuidv4();
 
     // 3. Construct BOT_CONFIG
-    const connectionId = uuidv4();
     const meetIdMatch = meetLink.match(/meet.google.com\/([a-zA-Z0-9-]+)/);
     const nativeMeetingId = meetIdMatch ? meetIdMatch[1] : '';
 
     if (!nativeMeetingId) {
-        return NextResponse.json({ error: "Could not extract meeting ID from the link." }, { status: 400 });
+      return NextResponse.json({ error: "Could not extract meeting ID from the link." }, { status: 400 });
     }
+
+    // Construct wsUrl for the Vexa Bot to connect to the backend WebSocket audio intake
+    // Assuming the custom server runs on port 3000 (or NEXT_PUBLIC_PORT if defined)
+    // For Docker, Vexa Bot needs to reach the host machine.
+    const hostWsUrl = process.env.INTERNAL_WS_HOST || 'host.docker.internal'; // Use env var or default
+    const wsPort = process.env.PORT || 3000; // Same port as the main app for custom server
+    const wsUrl = `ws://${hostWsUrl}:${wsPort}/ws/bot-audio-intake?connectionId=${connectionId}`;
 
     const botConfig: BotConfig = {
       platform: "google_meet",
       meetingUrl: meetLink,
       botName: `EHRVexaBot-${connectionId.substring(0, 8)}`,
-      token: "", // Placeholder - purpose to be clarified
+      token: process.env.VEXA_BOT_TOKEN || "", // Use an env var for token if needed
       connectionId: connectionId,
       nativeMeetingId: nativeMeetingId,
+      wsUrl: wsUrl, // Add the WebSocket URL for the bot
       automaticLeave: {
         waitingRoomTimeout: 300000, // 5 minutes
         noOneJoinedTimeout: 300000, // 5 minutes
         everyoneLeftTimeout: 300000, // 5 minutes
-      }
+      },
+      // meeting_id is optional and can be omitted if not used
     };
 
-    const botConfigString = JSON.stringify(botConfig);
-    const containerName = `vexa-bot-session-${connectionId}`;
+    // 4. Store BOT_CONFIG in activeStreams
+    // The ActiveStreamData interface expects other fields to be optional initially
+    activeStreams.set(connectionId, { botConfig });
+    console.log(`BOT_CONFIG for connection ${connectionId} stored. wsUrl: ${wsUrl}`);
 
-    console.log(`Attempting to start VexaBot for connection ${connectionId} with config: ${botConfigString}`);
-    console.log(`Docker image: ${dockerImageName}, Container name: ${containerName}`);
-
-    // 4. Spawn Docker process
-    const botProcess = spawn('docker', [
-      'run',
-      '--rm', // Automatically remove the container when it exits
-      `--name=${containerName}`, // Assign a unique name to the container
-      '-e', `BOT_CONFIG=${botConfigString}`,
-      dockerImageName
-    ]);
-
-    botProcess.stdout.on('data', (data) => {
-      console.log(`[VexaBot ${connectionId} STDOUT]: ${data.toString().trim()}`);
-      // Later: Stream this to the client via WebSocket
-    });
-
-    botProcess.stderr.on('data', (data) => {
-      console.error(`[VexaBot ${connectionId} STDERR]: ${data.toString().trim()}`);
-      // Later: Stream this to the client via WebSocket
-    });
-
-    botProcess.on('close', (code) => {
-      console.log(`VexaBot container ${containerName} (Connection ID: ${connectionId}) exited with code ${code}`);
-      // Later: Notify client via WebSocket that the process has ended
-    });
-
-    botProcess.on('error', (err) => {
-      console.error(`Failed to start Docker container ${containerName} for VexaBot (Connection ID: ${connectionId}):`, err);
-      // This typically means 'docker run' command itself failed.
-      // Note: This might not be catchable by the try/catch block if spawn itself succeeds but the command fails.
-      // The client won't get an immediate error response here, but we log it.
-      // A more robust solution would involve a way to communicate this failure back.
-    });
-
-    // Return a success response to the client immediately
-    // The actual transcript data will be streamed via WebSockets (Phase III)
-    return NextResponse.json({ 
-        message: "Live transcript process initiated.",
-        connectionId: connectionId, // Client might need this for WebSocket connection
-        containerName: containerName 
-    }, { status: 200 });
+    // 5. Return connectionId to the client
+    // The client will use this to connect to the SSE stream /api/transcript/stream
+    return NextResponse.json({ connectionId }, { status: 200 });
 
   } catch (error) {
     console.error("Error in /api/transcript/start:", error);

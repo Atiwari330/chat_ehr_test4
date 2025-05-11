@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useWindowSize } from 'usehooks-ts';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react'; // Added useRef, useEffect
 
 import { ModelSelector } from '@/components/model-selector';
 import { SidebarToggle } from '@/components/sidebar-toggle';
@@ -35,9 +35,23 @@ function PureChatHeader({
   const { open } = useSidebar();
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [isLiveTranscriptModalOpen, setIsLiveTranscriptModalOpen] = useState(false);
-  const [liveTranscripts, setLiveTranscripts] = useState<string[]>([]); // State for live transcripts
+  const [liveTranscripts, setLiveTranscripts] = useState<string[]>([]);
+  const [currentConnectionId, setCurrentConnectionId] = useState<string | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false); // Added to manage transcription state
 
+  const eventSourceRef = useRef<EventSource | null>(null);
   const { width: windowWidth } = useWindowSize();
+
+  // Effect to clean up EventSource on component unmount or when connectionId changes
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        console.log("ChatHeader unmounting or connectionId changing, closing EventSource.");
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array means this runs on unmount
 
   const handleClientSelect = async (clientId: string) => {
     try {
@@ -65,67 +79,121 @@ function PureChatHeader({
 
   const handleStartLiveTranscript = async (
     meetLink: string,
-    // The onTranscriptSegment callback from modal is not directly used here for API call,
-    // but kept if direct UI updates from this function were ever needed.
-    // For now, transcript updates will be driven by WebSocket in Phase III.
-    onTranscriptSegment: (segment: string) => void 
+    // onTranscriptSegment callback is not used here for API call,
+    // but its presence in the function signature was from previous structure.
+    // We can keep it or remove if LiveTranscriptModal no longer needs to pass it.
+    // For now, it's unused in this new SSE-driven logic.
+    _onTranscriptSegment: (segment: string) => void // Renamed to indicate it's unused
   ) => {
+    if (isTranscribing && eventSourceRef.current) {
+      toast({ type: 'info', description: 'A live transcript is already in progress.' } as any);
+      return;
+    }
     console.log('Attempting to start live transcript for:', meetLink);
-    setLiveTranscripts([]); // Clear previous transcripts
-    // isLoading state is managed within LiveTranscriptModal
+    setLiveTranscripts([]); 
+    setIsTranscribing(true); // Set transcribing state
 
     try {
-      const response = await fetch('/api/transcript/start', {
+      const startResponse = await fetch('/api/transcript/start', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ meetLink }),
       });
 
-      const result = await response.json();
+      const startResult = await startResponse.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to start transcript process via API');
+      if (!startResponse.ok) {
+        throw new Error(startResult.error || 'Failed to initiate transcript process.');
+      }
+      
+      const { connectionId } = startResult;
+      if (!connectionId) {
+        throw new Error('No connectionId received from server.');
+      }
+      setCurrentConnectionId(connectionId);
+      toast({ type: 'success', description: 'Transcript process initiated. Connecting to stream...' });
+
+      // Close any existing EventSource
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
       }
 
-      toast({ type: 'success', description: result.message || 'Live transcript process initiated.' });
-      console.log('API response:', result); // Log connectionId, containerName
+      const evtSource = new EventSource(`/api/transcript/stream?connectionId=${connectionId}`);
+      eventSourceRef.current = evtSource;
 
-      // Keep the simulation for now to show UI feedback.
-      // This will be replaced by WebSocket handling in Phase III.
-      const simulateTranscription = async () => {
-        const segments = [
-          "Hello, this is the first segment (simulated).",
-          "API call successful, bot process should be starting.",
-          "Waiting for real transcripts via WebSocket (Phase III)...",
-        ];
-        for (const segment of segments) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          setLiveTranscripts(prev => [...prev, segment]);
+      evtSource.onmessage = (event) => {
+        const messageData = JSON.parse(event.data);
+        // console.log('SSE Message:', messageData);
+
+        if (messageData.type === 'transcript' && messageData.segment) {
+          setLiveTranscripts((prev) => [...prev, messageData.segment]);
+        } else if (messageData.type === 'status') {
+          toast({ type: 'info', description: `Bot status: ${messageData.message}` } as any);
+          if (messageData.message?.includes('Bot exited')) {
+            stopActiveTranscription(connectionId, false); // Don't call API again if bot exited
+          }
+        } else if (messageData.type === 'error') {
+          toast({ type: 'error', description: `Error from bot/server: ${messageData.message}` });
+          stopActiveTranscription(connectionId, true); // Call API to ensure cleanup
+        } else if (messageData.type === 'log') {
+          // console.log(`VexaBot Log (${messageData.source}): ${messageData.message}`); 
         }
-        // toast({ type: 'success', description: 'Live transcript simulation finished.'});
       };
-      simulateTranscription().catch(simError => {
-         console.error("Transcription simulation error:", simError);
-         toast({ type: 'error', description: 'Error during transcript simulation.' });
-      });
+
+      evtSource.onerror = (err) => {
+        console.error("EventSource failed:", err);
+        toast({ type: 'error', description: 'Connection to transcript server lost.' });
+        stopActiveTranscription(connectionId, true); // Call API to ensure cleanup
+        evtSource.close(); // Ensure it's closed on error
+      };
 
     } catch (error) {
-      console.error("Error starting live transcript via API:", error);
-      toast({ type: 'error', description: `API Error: ${error instanceof Error ? error.message : 'Unknown error'}` });
-      // If API call fails, the LiveTranscriptModal's isTranscribing state should be reset.
-      // This might require passing a setter for isTranscribing or having the modal handle this.
-      // For now, the modal's own isLoading will reset, but isTranscribing might stay true.
-      // This will be refined when actual WebSocket connection status is available.
+      console.error("Error starting live transcript:", error);
+      toast({ type: 'error', description: `Failed to start live transcript: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      setIsTranscribing(false);
+      setCurrentConnectionId(null);
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
     }
-    // Do not set isLoading here, it's managed by the modal.
-    // Modal also stays open to show transcripts or errors.
+  };
+
+  const stopActiveTranscription = async (connIdToStop: string | null, callApi = true) => {
+    if (!connIdToStop) return;
+
+    console.log(`Stopping transcription for connectionId: ${connIdToStop}, callApi: ${callApi}`);
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    
+    if (callApi) {
+      try {
+        const stopResponse = await fetch(`/api/transcript/stop?connectionId=${connIdToStop}`, {
+          method: 'POST',
+        });
+        if (!stopResponse.ok) {
+          const stopResult = await stopResponse.json();
+          throw new Error(stopResult.error || 'Failed to stop transcript process via API.');
+        }
+        toast({ type: 'success', description: 'Live transcript stopped successfully.' });
+      } catch (error) {
+        console.error("Error stopping transcript via API:", error);
+        toast({ type: 'error', description: `Failed to stop transcript: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      }
+    }
+
+    setIsTranscribing(false);
+    setCurrentConnectionId(null);
+    // setLiveTranscripts([]); // Optionally clear transcripts on stop, or keep them visible
   };
 
   const clearLiveTranscripts = () => {
     setLiveTranscripts([]);
   };
+
+  // Pass isTranscribing and stopActiveTranscription to LiveTranscriptModal
 
   return (
     <header className="flex sticky top-0 bg-background py-1.5 items-center px-2 md:px-2 gap-2">
@@ -203,15 +271,33 @@ function PureChatHeader({
       />
       <LiveTranscriptModal
         open={isLiveTranscriptModalOpen}
-        onOpenChange={setIsLiveTranscriptModalOpen}
+        onOpenChange={(open) => {
+          setIsLiveTranscriptModalOpen(open);
+          if (!open && isTranscribing && currentConnectionId) {
+            // If modal is closed while transcribing, stop the transcription
+            stopActiveTranscription(currentConnectionId);
+          }
+        }}
         onStartSubmit={handleStartLiveTranscript}
         transcripts={liveTranscripts}
         clearTranscripts={clearLiveTranscripts}
+        isTranscribing={isTranscribing} // Pass state
+        stopTranscription={() => { // Pass stop function
+          if (currentConnectionId) {
+            stopActiveTranscription(currentConnectionId);
+          }
+        }}
       />
     </header>
   );
 }
 
 export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
-  return prevProps.selectedModelId === nextProps.selectedModelId;
+  // Add other relevant props to the comparison if they affect rendering
+  return (
+    prevProps.selectedModelId === nextProps.selectedModelId &&
+    prevProps.chatId === nextProps.chatId &&
+    prevProps.isReadonly === nextProps.isReadonly &&
+    prevProps.selectedVisibilityType === nextProps.selectedVisibilityType
+  );
 });

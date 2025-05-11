@@ -10,6 +10,7 @@ export const BotConfigSchema = z.object({
   token: z.string(),
   connectionId: z.string(),
   nativeMeetingId: z.string(), // *** ADDED schema field ***
+  wsUrl: z.string().url(), // Added for Phase III
   automaticLeave: z.object({
     waitingRoomTimeout: z.number().int(),
     noOneJoinedTimeout: z.number().int(),
