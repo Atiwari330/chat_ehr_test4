@@ -123,28 +123,66 @@ function PureChatHeader({
 
       evtSource.onmessage = (event) => {
         const messageData = JSON.parse(event.data);
-        // console.log('SSE Message:', messageData);
+        
+        if (messageData.type === 'transcript' && typeof messageData.segment === 'string') {
+          const segmentText = messageData.segment.trim();
+          const isSpeechFinal = messageData.speechFinal === true;
+          const localCurrentConnectionId = connectionId; // Capture connectionId for logs
 
-        if (messageData.type === 'transcript' && messageData.segment) {
-          setLiveTranscripts((prev) => [...prev, messageData.segment]);
+          console.log(`[CLIENT_SSE_RECV ${localCurrentConnectionId}] Segment: "${segmentText}", speechFinal: ${isSpeechFinal}, isFinal: ${messageData.isFinal}`);
+
+          setLiveTranscripts(prev => {
+            console.log(`[CLIENT_SSE_STATE_BEFORE ${localCurrentConnectionId}] Prev transcripts:`, JSON.stringify(prev));
+            let newState;
+            if (isSpeechFinal) {
+              // Utterance is complete. Finalize the current line.
+              // If the previous line was an interim, finalize it.
+              // Then, add an empty string to prepare for the next utterance on a new line.
+              if (prev.length === 0) {
+                newState = [segmentText, ""]; // First final segment, prepare for next
+              } else {
+                // Replace the last segment (which was the ongoing interim or the placeholder) with its final version,
+                // then add a new empty string for the next utterance.
+                newState = [...prev.slice(0, -1), segmentText, ""];
+              }
+            } else {
+              // Interim result. Update the current line.
+              if (prev.length === 0) {
+                newState = [segmentText]; // First interim segment
+              } else {
+                // Replace the last segment (which was the previous interim for the current utterance, or the empty placeholder)
+                newState = [...prev.slice(0, -1), segmentText];
+              }
+            }
+            console.log(`[CLIENT_SSE_STATE_AFTER ${localCurrentConnectionId}] Next transcripts:`, JSON.stringify(newState));
+            return newState;
+          });
         } else if (messageData.type === 'status') {
+          console.log(`[CLIENT_SSE_STATUS ${connectionId}] Status: ${messageData.message}`);
           toast({ type: 'info', description: `Bot status: ${messageData.message}` } as any);
           if (messageData.message?.includes('Bot exited')) {
-            stopActiveTranscription(connectionId, false); // Don't call API again if bot exited
+            stopActiveTranscription(connectionId, false); 
           }
         } else if (messageData.type === 'error') {
+          console.error(`[CLIENT_SSE_ERROR ${connectionId}] Error: ${messageData.message}`);
           toast({ type: 'error', description: `Error from bot/server: ${messageData.message}` });
-          stopActiveTranscription(connectionId, true); // Call API to ensure cleanup
+          stopActiveTranscription(connectionId, true); 
         } else if (messageData.type === 'log') {
-          // console.log(`VexaBot Log (${messageData.source}): ${messageData.message}`); 
+          // console.log(`VexaBot Log (${messageData.source}): ${messageData.message}`);
         }
       };
 
       evtSource.onerror = (err) => {
-        console.error("EventSource failed:", err);
-        toast({ type: 'error', description: 'Connection to transcript server lost.' });
-        stopActiveTranscription(connectionId, true); // Call API to ensure cleanup
-        evtSource.close(); // Ensure it's closed on error
+        // Note: 'err' is an Event, not an Error object. For more details, inspect 'err.target.readyState' or similar.
+        console.error(`[CLIENT_SSE_ONERROR ${connectionId}] EventSource failed:`, err);
+        toast({ type: 'error', description: 'Connection to transcript server lost. Please try again.' });
+        stopActiveTranscription(connectionId, true); 
+        // EventSource will attempt to reconnect automatically unless closed.
+        // We close it here to prevent retries as stopActiveTranscription handles cleanup.
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null; // Ensure ref is cleared
+        }
       };
 
     } catch (error) {

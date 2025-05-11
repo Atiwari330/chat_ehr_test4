@@ -14,7 +14,7 @@ Tasks for AI Agent Builder:
 
 Context & File Review:
 
-[] - Review server.ts.
+[x] - Review server.ts.
 
 Purpose: This file handles the WebSocket connection from VexaBot, receives audio, sends it to Deepgram, and processes Deepgram's responses.
 
@@ -24,7 +24,7 @@ Dependencies: lib/active-streams.ts (for streamData.sseStreamController), Deepgr
 
 Control: Ensure no changes are made to the Deepgram SDK options (interim_results: true should remain).
 
-[] - Review app/api/transcript/stream/route.ts.
+[x] - Review app/api/transcript/stream/route.ts.
 
 Purpose: This route establishes the SSE connection with the client and is responsible for spawning the VexaBot Docker container. It receives data from server.ts (indirectly via activeStreams.ts and the sseStreamController).
 
@@ -34,7 +34,7 @@ Dependencies: lib/active-streams.ts.
 
 Control: No changes to Docker spawning logic or SSE header setup are needed for this story.
 
-[] - Review lib/active-streams.ts.
+[x] - Review lib/active-streams.ts.
 
 Purpose: Manages shared state for active transcription streams, including the sseStreamController.
 
@@ -44,7 +44,7 @@ Control: No changes expected here for this story.
 
 Implementation & Verification (Server-Side - server.ts):
 
-[] - Verify SSE Payload: In server.ts, within the dgConnection.on(LiveTranscriptionEvents.Transcript, ...) handler, confirm that the JSON object being enqueued to streamData.sseStreamController already includes type: 'transcript', segment: transcript, isFinal: data.is_final, and speechFinal: data.speech_final.
+[x] - Verify SSE Payload: In server.ts, within the dgConnection.on(LiveTranscriptionEvents.Transcript, ...) handler, confirm that the JSON object being enqueued to streamData.sseStreamController already includes type: 'transcript', segment: transcript, isFinal: data.is_final, and speechFinal: data.speech_final.
 
 Code Snippet for Verification (already exists, just confirm):
 
@@ -62,7 +62,7 @@ Code Snippet for Verification (already exists, just confirm):
 // );
 
 
-[] - Add Detailed Logging (Server-Side - server.ts):
+[x] - Add Detailed Logging (Server-Side - server.ts):
 
 Before enqueuing to SSE in server.ts, add a console.log to show the exact payload being sent.
 
@@ -108,7 +108,7 @@ Use code with caution.
 TypeScript
 IGNORE_WHEN_COPYING_END
 
-[] - Add Logging (API Route - app/api/transcript/stream/route.ts):
+[x] - Add Logging (API Route - app/api/transcript/stream/route.ts):
 
 Log when the SSE stream starts for a connectionId.
 
@@ -147,11 +147,11 @@ IGNORE_WHEN_COPYING_END
 
 Testing & Verification (Human Steps):
 
-[] - Start the application (pnpm dev).
+[x] - Start the application (pnpm dev).
 
-[] - Open the application in your browser and initiate a live transcript session with a Google Meet link.
+[x] - Open the application in your browser and initiate a live transcript session with a Google Meet link.
 
-[] - Observe Terminal Logs (for server.ts):
+[x] - Observe Terminal Logs (for server.ts):
 
 Look for [SERVER_SSE_SEND <connectionId>] Payload: {...} logs.
 
@@ -159,13 +159,13 @@ Verify that each payload contains type: "transcript", a segment (string), isFina
 
 Observe [DEEPGRAM_OPEN], [DEEPGRAM_CLOSE], [DEEPGRAM_ERROR] logs to understand the Deepgram connection state.
 
-[] - Observe Terminal Logs (for app/api/transcript/stream/route.ts):
+[x] - Observe Terminal Logs (for app/api/transcript/stream/route.ts):
 
 Look for [STREAM_ROUTE_SSE_START <connectionId>] when the stream is requested.
 
 Observe [VEXA_STDOUT <connectionId>], [VEXA_STDERR <connectionId>], [VEXA_CLOSE <connectionId>], [VEXA_PROC_ERROR <connectionId>] logs to monitor the VexaBot container.
 
-[] - Observe Browser Network Tab:
+[x] - Observe Browser Network Tab:
 
 Open browser developer tools, go to the "Network" tab.
 
@@ -486,4 +486,3 @@ Verify the UI updates to show transcription has stopped (isTranscribing state).
 Verify the EventSource connection is closed in the Network tab.
 
 Reconnect the network and try starting a new transcript; it should work without issues from the previous failed connection.
-
